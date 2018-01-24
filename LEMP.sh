@@ -106,7 +106,7 @@ sleep 5
 TGArn=`aws elbv2 describe-target-groups --name myLEMPApplicationTG | grep TargetGroupArn | awk -F'"' '{print $4}'`
 echo " Target Group successfully created !"
 echo " Now create Auto-Scaling Group and link with the Target Group and Launch Configuration..."
-aws autoscaling create-auto-scaling-group --auto-scaling-group-name myLEMPApplicationSG --launch-configuration-name myLEMPApplicationLC --min-size 1 --max-size 3 --target-group-arns $TGArn --no-new-instances-protected-from-scale-in --vpc-zone-identifier $subnet1
+aws autoscaling create-auto-scaling-group --auto-scaling-group-name myLEMPApplicationSG --launch-configuration-name myLEMPApplicationLC --min-size 1 --max-size 3 --default-cooldown 0 --target-group-arns $TGArn --no-new-instances-protected-from-scale-in --vpc-zone-identifier $subnet1
 sleep 15
 
 #### Create the Load Balancer 
