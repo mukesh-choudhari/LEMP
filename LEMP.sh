@@ -69,8 +69,9 @@ done
 publicDnsName=`aws ec2 describe-instances --instance-ids $instanceID | grep -m 1 PublicDnsName | awk -F'"' '{print $4}'`
 echo " EC2 creation successful with PublcDnsName : $publicDnsName"
 
-sleep 30 #The EC2 instance starts but OS takes time to boot.
+sleep 100 #The EC2 machine is powered on but OS takes time to boot
 echo -e "\n Modify the index.php file to point to the newly created MySQL service..."
+cp ./php/index.php ./php/index.php_old
 sed -i "/{MYSQL_HOST}/s/{MYSQL_HOST}/$mySQLHost/g" ./php/index.php
 sed -i "/{MYSQL_USER}/s/{MYSQL_USER}/$mySQLUser/g" ./php/index.php
 sed -i "/{MYSQL_PASS}/s/{MYSQL_PASS}/$mySQLPass/g" ./php/index.php
@@ -78,6 +79,7 @@ sed -i 's/\r//g' ./php/index.php
 echo -e " Modification done. Now Copy the files to the AWS EC2 instance..."
 ssh -o StrictHostKeyChecking=no -i ./pem/$keyName ec2-user@$publicDnsName "sudo chmod -R 777 /var/www/html"
 scp -o StrictHostKeyChecking=no -i ./pem/$keyName -r ./php/*.php ec2-user@$publicDnsName:/var/www/html/
+mv -f ./php/index.php_old ./php/index.php
 echo -e " Files have been copied to the EC2 Instance. Now create AMI of the instance for Auto-Scaling..."
 aws ec2 stop-instances --instance-ids $instanceID
 while ! [[ `aws ec2 describe-instances --instance-ids $instanceID | grep -A 3 State | grep Name | grep stopped` ]]
@@ -89,7 +91,7 @@ do
   sleep 20
 done
 AMIId=`aws ec2 create-image --instance-id $instanceID --name myLEMPApplicationAMI | grep ImageId | awk -F'"' '{print $4}'`
-sleep 100 #Wait for AMI creation to complete 
+sleep 100 #Wait for AMI creation to complete
 aws ec2 terminate-instances --instance-ids $instanceID
 echo " New AMI successfully created with AMI ID : $AMIId"
 
@@ -109,7 +111,7 @@ echo " Now create Auto-Scaling Group and link with the Target Group and Launch C
 aws autoscaling create-auto-scaling-group --auto-scaling-group-name myLEMPApplicationSG --launch-configuration-name myLEMPApplicationLC --min-size 1 --max-size 3 --default-cooldown 0 --target-group-arns $TGArn --no-new-instances-protected-from-scale-in --vpc-zone-identifier $subnet1
 sleep 15
 
-#### Create the Load Balancer 
+#### Create the Load Balancer
 
 aws elbv2 create-load-balancer --name myLEMPApplicationLB --subnets "$subnet1" "$subnet2" --security-groups $sGroupId --scheme internet-facing --type application --ip-address-type ipv4
 sleep 5
